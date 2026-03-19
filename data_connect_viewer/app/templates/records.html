@@ -10,6 +10,7 @@
             <p class="text-muted mb-0">保存済みレコードを検索・参照できます。</p>
           </div>
           <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" id="auto-refresh-toggle" type="button">自動更新</button>
             <a class="btn btn-outline-primary" download="records.csv" href="/api/v1/records/export.csv{% if query_without_paging %}?{{ query_without_paging }}{% endif %}">CSV出力</a>
             <a class="btn btn-primary" download="records.json" href="/api/v1/records/export.json{% if query_without_paging %}?{{ query_without_paging }}{% endif %}">JSON出力</a>
           </div>
@@ -100,4 +101,36 @@
     </div>
   </div>
 </div>
+<script>
+  (function () {
+    const storageKey = "records-auto-refresh-enabled";
+    const button = document.getElementById("auto-refresh-toggle");
+    const refreshSeconds = {{ auto_refresh_seconds }};
+    if (!button) {
+      return;
+    }
+
+    function isEnabled() {
+      const value = window.localStorage.getItem(storageKey);
+      return value !== "off";
+    }
+
+    function updateButtonLabel() {
+      button.textContent = isEnabled() ? "自動更新" : "更新停止中";
+    }
+
+    button.addEventListener("click", function () {
+      window.localStorage.setItem(storageKey, isEnabled() ? "off" : "on");
+      updateButtonLabel();
+    });
+
+    updateButtonLabel();
+
+    if (isEnabled()) {
+      window.setTimeout(function () {
+        window.location.reload();
+      }, refreshSeconds * 1000);
+    }
+  })();
+</script>
 {% endblock %}

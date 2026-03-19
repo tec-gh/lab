@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -13,4 +15,4 @@ class FieldMappingUpdateItem(BaseModel):
 
 class FieldMappingUpdateRequest(BaseModel):
     mappings: list[FieldMappingUpdateItem]
-    change_summary: str | None = None
+    change_summary: Optional[str] = None

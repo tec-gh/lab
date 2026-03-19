@@ -1,4 +1,5 @@
 import secrets
+from typing import Optional
 
 from fastapi import Depends, HTTPException, Header, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -25,7 +26,7 @@ def require_admin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
     return credentials.username
 
 
-def verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
+def verify_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
     if not settings.api_key:
         return
     if not x_api_key or not secrets.compare_digest(x_api_key, settings.api_key):

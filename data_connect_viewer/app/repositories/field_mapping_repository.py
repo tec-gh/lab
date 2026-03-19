@@ -1,5 +1,6 @@
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.models.field_mapping import FieldMapping
 from app.models.setting_history import SettingHistory
@@ -21,7 +22,10 @@ def get_current_version(session: Session) -> int:
 
 
 def replace_active_mappings(
-    session: Session, mappings: list[FieldMappingUpdateItem], changed_by: str | None, change_summary: str | None
+    session: Session,
+    mappings: list[FieldMappingUpdateItem],
+    changed_by: Optional[str],
+    change_summary: Optional[str],
 ) -> int:
     new_version = get_current_version(session) + 1
     session.execute(update(FieldMapping).where(FieldMapping.is_active.is_(True)).values(is_active=False))

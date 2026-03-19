@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Optional
 
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.orm import Session
@@ -24,8 +25,13 @@ def create_record(session: Session, record: Record) -> Record:
     return record
 
 
-def get_record_by_id(session: Session, record_id: int) -> Record | None:
+def get_record_by_id(session: Session, record_id: int) -> Optional[Record]:
     return session.get(Record, record_id)
+
+
+def get_record_by_hostname(session: Session, hostname: str) -> Optional[Record]:
+    stmt = select(Record).where(Record.hostname == hostname).order_by(Record.id.desc())
+    return session.scalars(stmt).first()
 
 
 def build_record_filters(filters: dict) -> list:

@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
@@ -26,7 +26,7 @@ class MappingExtractor:
         return loaded if isinstance(loaded, dict) else {"value": loaded}
 
     @staticmethod
-    def get_value_by_path(payload: dict[str, Any], path: str) -> str | None:
+    def get_value_by_path(payload: dict[str, Any], path: str) -> Optional[str]:
         current: Any = payload
         for part in path.split("."):
             if not isinstance(current, dict) or part not in current:
@@ -38,7 +38,7 @@ class MappingExtractor:
             return json.dumps(current, ensure_ascii=False)
         return str(current)
 
-    def extract(self, payload: dict[str, Any], mappings: dict[str, str]) -> dict[str, str | None]:
+    def extract(self, payload: dict[str, Any], mappings: Dict[str, str]) -> Dict[str, Optional[str]]:
         return {field_key: self.get_value_by_path(payload, path) for field_key, path in mappings.items()}
 
 

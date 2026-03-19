@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
@@ -36,11 +37,8 @@ def build_filters(request: Request) -> dict:
 
 
 def build_query_without_paging(request: Request) -> str:
-    params = []
-    for key, value in request.query_params.multi_items():
-        if key not in {"page", "page_size"}:
-            params.append(f"{key}={value}")
-    return "&".join(params)
+    params = [(key, value) for key, value in request.query_params.multi_items() if key not in {"page", "page_size"}]
+    return urlencode(params)
 
 
 @router.get("/")
@@ -78,6 +76,7 @@ def records_page(
             "total": total,
             "has_prev": page > 1,
             "has_next": page * page_size < total,
+            "auto_refresh_seconds": 30,
         },
     )
 

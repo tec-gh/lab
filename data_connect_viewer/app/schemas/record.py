@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -12,14 +12,14 @@ class RecordCreateResponse(BaseModel):
 
 class RecordItemResponse(BaseModel):
     id: int
-    hostname: str | None
-    ipaddress: str | None
-    area: str | None
-    building: str | None
-    category: str | None
-    model: str | None
-    ping_test_result: str | None
-    exec_result: str | None
+    hostname: Optional[str]
+    ipaddress: Optional[str]
+    area: Optional[str]
+    building: Optional[str]
+    category: Optional[str]
+    model: Optional[str]
+    ping_test_result: Optional[str]
+    exec_result: Optional[str]
     received_at: datetime
 
 

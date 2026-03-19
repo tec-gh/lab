@@ -5,6 +5,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Dict, Optional
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -17,7 +18,7 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "change_me")
 API_KEY = os.getenv("API_KEY", "")
 
 
-def request(url: str, method: str = "GET", data: bytes | None = None, headers: dict | None = None):
+def request(url: str, method: str = "GET", data: Optional[bytes] = None, headers: Optional[Dict[str, str]] = None):
     req = urllib.request.Request(url=url, data=data, method=method)
     for key, value in (headers or {}).items():
         req.add_header(key, value)

@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import verify_api_key
@@ -19,18 +19,18 @@ router = APIRouter(prefix="/api/v1", tags=["api"])
 
 
 def parse_filters(
-    hostname: str | None = None,
-    ipaddress: str | None = None,
-    area: str | None = None,
-    building: str | None = None,
-    category: str | None = None,
-    model: str | None = None,
-    ping_test_result: str | None = None,
-    exec_result: str | None = None,
-    keyword: str | None = None,
-    date_from: datetime | None = None,
-    date_to: datetime | None = None,
-) -> dict[str, Any]:
+    hostname: Optional[str] = None,
+    ipaddress: Optional[str] = None,
+    area: Optional[str] = None,
+    building: Optional[str] = None,
+    category: Optional[str] = None,
+    model: Optional[str] = None,
+    ping_test_result: Optional[str] = None,
+    exec_result: Optional[str] = None,
+    keyword: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+) -> Dict[str, Any]:
     return {
         "hostname": hostname,
         "ipaddress": ipaddress,
@@ -46,28 +46,33 @@ def parse_filters(
     }
 
 
-@router.post("/records", response_model=RecordCreateResponse, status_code=201, dependencies=[Depends(verify_api_key)])
-def create_record(payload: dict[str, Any], db: Session = Depends(get_db)):
-    record = create_record_from_payload(db, payload)
+@router.post("/records", response_model=RecordCreateResponse, dependencies=[Depends(verify_api_key)])
+def create_record(payload: Dict[str, Any], response: Response, db: Session = Depends(get_db)):
+    record, created = create_record_from_payload(db, payload)
     db.commit()
-    return RecordCreateResponse(id=record.id, message="created", mapping_version=record.mapping_version)
+    response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return RecordCreateResponse(
+        id=record.id,
+        message="created" if created else "updated",
+        mapping_version=record.mapping_version,
+    )
 
 
 @router.get("/records", response_model=RecordListResponse)
 def get_records(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=settings.page_size_default, ge=1, le=200),
-    hostname: str | None = None,
-    ipaddress: str | None = None,
-    area: str | None = None,
-    building: str | None = None,
-    category: str | None = None,
-    model: str | None = None,
-    ping_test_result: str | None = None,
-    exec_result: str | None = None,
-    keyword: str | None = None,
-    date_from: datetime | None = None,
-    date_to: datetime | None = None,
+    hostname: Optional[str] = None,
+    ipaddress: Optional[str] = None,
+    area: Optional[str] = None,
+    building: Optional[str] = None,
+    category: Optional[str] = None,
+    model: Optional[str] = None,
+    ping_test_result: Optional[str] = None,
+    exec_result: Optional[str] = None,
+    keyword: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     db: Session = Depends(get_db),
 ):
     filters = parse_filters(
@@ -94,17 +99,17 @@ def get_records(
 
 @router.get("/records/export.csv")
 def export_csv(
-    hostname: str | None = None,
-    ipaddress: str | None = None,
-    area: str | None = None,
-    building: str | None = None,
-    category: str | None = None,
-    model: str | None = None,
-    ping_test_result: str | None = None,
-    exec_result: str | None = None,
-    keyword: str | None = None,
-    date_from: datetime | None = None,
-    date_to: datetime | None = None,
+    hostname: Optional[str] = None,
+    ipaddress: Optional[str] = None,
+    area: Optional[str] = None,
+    building: Optional[str] = None,
+    category: Optional[str] = None,
+    model: Optional[str] = None,
+    ping_test_result: Optional[str] = None,
+    exec_result: Optional[str] = None,
+    keyword: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     db: Session = Depends(get_db),
 ):
     filters = parse_filters(
@@ -120,17 +125,17 @@ def export_csv(
 
 @router.get("/records/export.json")
 def export_json_file(
-    hostname: str | None = None,
-    ipaddress: str | None = None,
-    area: str | None = None,
-    building: str | None = None,
-    category: str | None = None,
-    model: str | None = None,
-    ping_test_result: str | None = None,
-    exec_result: str | None = None,
-    keyword: str | None = None,
-    date_from: datetime | None = None,
-    date_to: datetime | None = None,
+    hostname: Optional[str] = None,
+    ipaddress: Optional[str] = None,
+    area: Optional[str] = None,
+    building: Optional[str] = None,
+    category: Optional[str] = None,
+    model: Optional[str] = None,
+    ping_test_result: Optional[str] = None,
+    exec_result: Optional[str] = None,
+    keyword: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     db: Session = Depends(get_db),
 ):
     filters = parse_filters(
