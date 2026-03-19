@@ -7,6 +7,7 @@
 主な機能:
 
 - JSON データ受信 API
+- 同一 `hostname` 受信時の既存レコード更新
 - 保存済みデータの一覧表示
 - 詳細画面での JSON 確認
 - CSV / JSON ダウンロード
@@ -152,6 +153,13 @@ curl http://127.0.0.1:8000/health
 http://127.0.0.1:8000/records
 ```
 
+一覧画面には自動更新トグルがあります。
+
+- `自動更新`: 30 秒ごとに一覧を自動再読み込み
+- `更新停止中`: 自動再読み込みを停止
+
+ボタンは1つで、クリックするたびに表示が切り替わります。
+
 ### 8.3 スモークテスト
 
 ```bash
@@ -167,6 +175,12 @@ curl -H "Content-Type: application/json" \
   -d '{"hostname":"sv-01","ipaddress":"192.168.0.10","area":"tokyo","building":"dc-a","category":"server","model":"test","ping_test_result":"success","exec_result":"ok"}' \
   http://127.0.0.1:8000/api/v1/records
 ```
+
+補足:
+
+- 新しい `hostname` の場合は新規登録されます
+- 既に同じ `hostname` が DB に存在する場合は、新規作成ではなく既存レコードを更新します
+- 更新時のレスポンスは `200`、メッセージは `updated` です
 
 API キーを使う場合:
 
