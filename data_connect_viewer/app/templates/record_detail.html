@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="h4 mb-1">レコード詳細</h1>
+      <p class="text-muted mb-0">受信データの詳細確認</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/records">一覧へ戻る</a>
+  </div>
+  {% if record %}
+  <div class="col-12 col-xl-5">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">基本情報</h2>
+        <dl class="row mb-0">
+          <dt class="col-12 col-md-6">ID</dt><dd class="col-12 col-md-6">{{ record.id }}</dd>
+          <dt class="col-12 col-md-6">受信日時</dt><dd class="col-12 col-md-6">{{ record.received_at.strftime("%Y-%m-%d %H:%M:%S") }}</dd>
+          <dt class="col-12 col-md-6">Hostname</dt><dd class="col-12 col-md-6">{{ record.hostname or "-" }}</dd>
+          <dt class="col-12 col-md-6">IP Address</dt><dd class="col-12 col-md-6">{{ record.ipaddress or "-" }}</dd>
+          <dt class="col-12 col-md-6">Area</dt><dd class="col-12 col-md-6">{{ record.area or "-" }}</dd>
+          <dt class="col-12 col-md-6">Building</dt><dd class="col-12 col-md-6">{{ record.building or "-" }}</dd>
+          <dt class="col-12 col-md-6">Category</dt><dd class="col-12 col-md-6">{{ record.category or "-" }}</dd>
+          <dt class="col-12 col-md-6">Model</dt><dd class="col-12 col-md-6">{{ record.model or "-" }}</dd>
+          <dt class="col-12 col-md-6">Ping Result</dt><dd class="col-12 col-md-6">{{ record.ping_test_result or "-" }}</dd>
+          <dt class="col-12 col-md-6">Exec Result</dt><dd class="col-12 col-md-6">{{ record.exec_result or "-" }}</dd>
+          <dt class="col-12 col-md-6">Mapping Version</dt><dd class="col-12 col-md-6">{{ record.mapping_version }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-7">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">受信JSON</h2>
+        <pre class="json-view">{{ payload_pretty }}</pre>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="alert alert-warning">対象レコードが見つかりません。</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

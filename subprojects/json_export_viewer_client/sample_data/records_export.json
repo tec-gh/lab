@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "hostname": "sv-sample-001",
+    "ipaddress": "192.168.10.10",
+    "area": "tokyo",
+    "building": "dc-east",
+    "category": "server",
+    "model": "sample-model",
+    "ping_test_result": "success",
+    "exec_result": "ok",
+    "received_at": "2026-03-12T09:30:00",
+    "mapping_version": 1,
+    "payload_json": "{\"hostname\":\"sv-sample-001\",\"ipaddress\":\"192.168.10.10\"}"
+  }
+]

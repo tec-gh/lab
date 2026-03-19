@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h1 class="h4 mb-1">受信データ一覧</h1>
+            <p class="text-muted mb-0">保存済みレコードを検索・参照できます。</p>
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" download="records.csv" href="/api/v1/records/export.csv{% if query_without_paging %}?{{ query_without_paging }}{% endif %}">CSV出力</a>
+            <a class="btn btn-primary" download="records.json" href="/api/v1/records/export.json{% if query_without_paging %}?{{ query_without_paging }}{% endif %}">JSON出力</a>
+          </div>
+        </div>
+        <form method="get" class="row g-3">
+          {% for field in mappings if field.is_searchable %}
+          <div class="col-12 col-md-6 col-xl-3">
+            <label class="form-label">{{ field.display_name }}</label>
+            <input class="form-control" type="text" name="{{ field.field_key }}" value="{{ filters[field.field_key] }}">
+          </div>
+          {% endfor %}
+          <div class="col-12 col-md-6 col-xl-3">
+            <label class="form-label">キーワード</label>
+            <input class="form-control" type="text" name="keyword" value="{{ filters.keyword }}">
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <label class="form-label">受信日時From</label>
+            <input class="form-control" type="datetime-local" name="date_from" value="{{ filters.date_from }}">
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <label class="form-label">受信日時To</label>
+            <input class="form-control" type="datetime-local" name="date_to" value="{{ filters.date_to }}">
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">検索</button>
+            <a class="btn btn-outline-secondary" href="/records">クリア</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">検索結果</h2>
+          <span class="badge text-bg-secondary">件数 {{ total }}</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-striped table-hover align-middle">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>受信日時</th>
+                {% for field in mappings if field.is_visible %}
+                <th>{{ field.display_name }}</th>
+                {% endfor %}
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in records %}
+              <tr>
+                <td>{{ record.id }}</td>
+                <td>{{ record.received_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+                {% for field in mappings if field.is_visible %}
+                {% set value = record|attr(field.field_key) %}
+                <td>
+                  {% if field.field_key in ["ping_test_result", "exec_result"] %}
+                  <span class="badge rounded-pill {% if value and value|lower in ['success', 'ok', 'passed'] %}text-bg-success{% elif value %}text-bg-warning{% else %}text-bg-secondary{% endif %}">
+                    {{ value or "-" }}
+                  </span>
+                  {% else %}
+                  {{ value or "-" }}
+                  {% endif %}
+                </td>
+                {% endfor %}
+                <td><a class="btn btn-sm btn-outline-primary" href="/records/{{ record.id }}">詳細</a></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="99" class="text-center text-muted py-4">データがありません。</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between mt-3">
+          <div class="text-muted small">Page {{ page }}</div>
+          <div class="d-flex gap-2">
+            {% if has_prev %}
+            <a class="btn btn-outline-secondary btn-sm" href="?page={{ page - 1 }}&page_size={{ page_size }}{% if query_without_paging %}&{{ query_without_paging }}{% endif %}">前へ</a>
+            {% endif %}
+            {% if has_next %}
+            <a class="btn btn-outline-secondary btn-sm" href="?page={{ page + 1 }}&page_size={{ page_size }}{% if query_without_paging %}&{{ query_without_paging }}{% endif %}">次へ</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

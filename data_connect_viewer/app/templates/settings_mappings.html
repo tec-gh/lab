@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h1 class="h4 mb-1">SFTP 転送設定</h1>
+            <p class="text-muted mb-0">JSON出力と同一形式のファイルを定期的に SFTP 転送します。</p>
+          </div>
+          <span class="badge {% if sftp_settings.enabled %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+            {% if sftp_settings.enabled %}有効{% else %}未設定{% endif %}
+          </span>
+        </div>
+        <form method="post" action="/settings/sftp/save" class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label class="form-label">SFTP接続先IPアドレス</label>
+            <input class="form-control" type="text" name="sftp_host" value="{{ sftp_settings.sftp_host }}">
+          </div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label">ユーザ名</label>
+            <input class="form-control" type="text" name="sftp_username" value="{{ sftp_settings.sftp_username }}">
+          </div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label">パスワード</label>
+            <input class="form-control" type="password" name="sftp_password" value="{{ sftp_settings.sftp_password }}">
+          </div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label">転送頻度(分)</label>
+            <input class="form-control" type="number" min="1" name="sftp_frequency_minutes" value="{{ sftp_settings.sftp_frequency_minutes }}">
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">SFTP設定を保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h1 class="h4 mb-1">項目マッピング設定</h1>
+            <p class="text-muted mb-0">標準項目と受信 JSON の対応関係を変更できます。</p>
+          </div>
+          <form method="post" action="/settings/mappings/resync">
+            <button class="btn btn-outline-warning" type="submit">既存データ再同期</button>
+          </form>
+        </div>
+        <form method="post" action="/settings/mappings/save">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>標準項目</th>
+                  <th>表示名</th>
+                  <th>JSONパス</th>
+                  <th>表示</th>
+                  <th>検索</th>
+                  <th>出力</th>
+                  <th>順序</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in mappings %}
+                <tr>
+                  <td class="fw-semibold">{{ item.field_key }}</td>
+                  <td><input class="form-control" type="text" name="display_name_{{ item.field_key }}" value="{{ item.display_name }}"></td>
+                  <td><input class="form-control" type="text" name="json_path_{{ item.field_key }}" value="{{ item.json_path }}"></td>
+                  <td><input class="form-check-input" type="checkbox" name="is_visible_{{ item.field_key }}" {% if item.is_visible %}checked{% endif %}></td>
+                  <td><input class="form-check-input" type="checkbox" name="is_searchable_{{ item.field_key }}" {% if item.is_searchable %}checked{% endif %}></td>
+                  <td><input class="form-check-input" type="checkbox" name="is_exportable_{{ item.field_key }}" {% if item.is_exportable %}checked{% endif %}></td>
+                  <td><input class="form-control" type="number" name="sort_order_{{ item.field_key }}" value="{{ item.sort_order }}"></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="row g-3 mt-1">
+            <div class="col-12 col-lg-6">
+              <label class="form-label">変更概要</label>
+              <input class="form-control" type="text" name="change_summary" placeholder="例: hostname の JSON パスを変更">
+            </div>
+            <div class="col-12 d-flex gap-2">
+              <button class="btn btn-primary" type="submit">保存</button>
+              <a class="btn btn-outline-secondary" href="/records">一覧へ戻る</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

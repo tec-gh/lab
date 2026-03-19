@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.venv/
+delivery/
+product/
+*.7z
+*.zip
+data_connect_viewer/data/*.db
+subprojects/json_export_viewer_client/__pycache__/
+subprojects/wsl_data_connect_viewer/.venv/
