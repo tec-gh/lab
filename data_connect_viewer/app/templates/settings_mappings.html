@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block content %}
 <div class="row g-4">
   <div class="col-12">
@@ -29,6 +29,10 @@
           <div class="col-12 col-lg-6">
             <label class="form-label">転送頻度(分)</label>
             <input class="form-control" type="number" min="1" name="sftp_frequency_minutes" value="{{ sftp_settings.sftp_frequency_minutes }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label">転送先パス</label>
+            <input class="form-control" type="text" name="sftp_remote_path" value="{{ sftp_settings.sftp_remote_path }}">
           </div>
           <div class="col-12 d-flex gap-2">
             <button class="btn btn-primary" type="submit">SFTP設定を保存</button>

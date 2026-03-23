@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import logging
 
 from app.core.database import session_scope
@@ -31,7 +31,7 @@ def transfer_export_json() -> None:
     try:
         transport.connect(username=sftp_settings.sftp_username, password=sftp_settings.sftp_password)
         with paramiko.SFTPClient.from_transport(transport) as client:
-            with client.file(sftp_settings.sftp_remote_filename, "w") as remote_file:
+            with client.file(sftp_settings.sftp_remote_path, "w") as remote_file:
                 remote_file.write(content)
     finally:
         transport.close()

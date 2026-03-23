@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+﻿from dataclasses import dataclass
 import os
 
 
@@ -17,6 +17,7 @@ class Settings:
     sftp_password: str = os.getenv("SFTP_PASSWORD", "")
     sftp_frequency_minutes: int = int(os.getenv("SFTP_FREQUENCY_MINUTES", "60"))
     sftp_remote_filename: str = os.getenv("SFTP_REMOTE_FILENAME", "records_export.json")
+    sftp_remote_path: str = os.getenv("SFTP_REMOTE_PATH", "records_export.json")
 
 
 settings = Settings()

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+﻿from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ SFTP_SETTING_KEYS = (
     "sftp_username",
     "sftp_password",
     "sftp_frequency_minutes",
+    "sftp_remote_path",
 )
 
 
@@ -20,11 +21,17 @@ class SftpTransferSettings:
     sftp_username: str = ""
     sftp_password: str = ""
     sftp_frequency_minutes: int = 60
-    sftp_remote_filename: str = "records_export.json"
+    sftp_remote_path: str = "records_export.json"
 
     @property
     def enabled(self) -> bool:
-        return bool(self.sftp_host and self.sftp_username and self.sftp_password and self.sftp_frequency_minutes > 0)
+        return bool(
+            self.sftp_host
+            and self.sftp_username
+            and self.sftp_password
+            and self.sftp_frequency_minutes > 0
+            and self.sftp_remote_path
+        )
 
 
 def get_sftp_settings(session: Session) -> SftpTransferSettings:
@@ -39,7 +46,7 @@ def get_sftp_settings(session: Session) -> SftpTransferSettings:
         sftp_username=stored.get("sftp_username", settings.sftp_username),
         sftp_password=stored.get("sftp_password", settings.sftp_password),
         sftp_frequency_minutes=frequency,
-        sftp_remote_filename=settings.sftp_remote_filename,
+        sftp_remote_path=stored.get("sftp_remote_path", settings.sftp_remote_path or settings.sftp_remote_filename),
     )
 
 

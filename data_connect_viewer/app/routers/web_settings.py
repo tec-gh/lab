@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+﻿from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -76,6 +76,9 @@ async def save_sftp_settings_route(request: Request, db: Session = Depends(get_d
         "sftp_username": str(form.get("sftp_username", "")).strip(),
         "sftp_password": str(form.get("sftp_password", "")).strip(),
         "sftp_frequency_minutes": str(form.get("sftp_frequency_minutes", settings.sftp_frequency_minutes)).strip(),
+        "sftp_remote_path": str(
+            form.get("sftp_remote_path", settings.sftp_remote_path or settings.sftp_remote_filename)
+        ).strip(),
     }
     save_sftp_settings(db, values)
     db.commit()
