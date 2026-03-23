@@ -95,6 +95,7 @@ export SFTP_HOST=
 export SFTP_USERNAME=
 export SFTP_PASSWORD=
 export SFTP_FREQUENCY_MINUTES=60
+export SFTP_REMOTE_PATH=records_export.json
 ```
 
 通常は未設定でも起動できます。未設定時はアプリ内のデフォルト値を使用します。
@@ -181,6 +182,9 @@ curl -H "Content-Type: application/json" \
 - 新しい `hostname` の場合は新規登録されます
 - 既に同じ `hostname` が DB に存在する場合は、新規作成ではなく既存レコードを更新します
 - 更新時のレスポンスは `200`、メッセージは `updated` です
+- `ipaddress` / `area` / `building` / `category` / `model` は、既存値が空のときだけ受信値で補完します
+- `ping_test_result` / `exec_result` は、既存値に関係なく受信値で上書きします
+- 更新ルールはアプリ内のポリシー定義で項目単位に変更しやすい構成になっています
 
 API キーを使う場合:
 
@@ -211,9 +215,10 @@ curl -H "X-API-Key: your-key" \
 - ユーザ名
 - パスワード
 - 転送頻度(分)
+- 転送先パス
 
 転送される JSON は、画面の JSON 出力ボタンでダウンロードできるものと同一形式です。
-転送先ファイル名は `records_export.json` 固定です。
+転送先パスには、ファイル名のみ、または任意のリモートパスを指定できます。
 
 ## 12. トラブルシュート
 
