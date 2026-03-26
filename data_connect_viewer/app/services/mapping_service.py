@@ -26,6 +26,15 @@ class MappingExtractor:
         return loaded if isinstance(loaded, dict) else {"value": loaded}
 
     @staticmethod
+    def has_path(payload: dict[str, Any], path: str) -> bool:
+        current: Any = payload
+        for part in path.split("."):
+            if not isinstance(current, dict) or part not in current:
+                return False
+            current = current[part]
+        return True
+
+    @staticmethod
     def get_value_by_path(payload: dict[str, Any], path: str) -> Optional[str]:
         current: Any = payload
         for part in path.split("."):
@@ -40,6 +49,9 @@ class MappingExtractor:
 
     def extract(self, payload: dict[str, Any], mappings: Dict[str, str]) -> Dict[str, Optional[str]]:
         return {field_key: self.get_value_by_path(payload, path) for field_key, path in mappings.items()}
+
+    def extract_present_fields(self, payload: dict[str, Any], mappings: Dict[str, str]) -> set[str]:
+        return {field_key for field_key, path in mappings.items() if self.has_path(payload, path)}
 
 
 def ensure_default_mappings(session: Session) -> None:

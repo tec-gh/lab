@@ -7,7 +7,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div>
             <h1 class="h4 mb-1">受信データ一覧</h1>
-            <p class="text-muted mb-0">保存済みレコードを検索・参照できます。</p>
+            <p class="text-muted mb-0">受信済みレコードの検索・参照・出力を行います。</p>
           </div>
           <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary" id="auto-refresh-toggle" type="button">自動更新</button>
@@ -27,11 +27,11 @@
             <input class="form-control" type="text" name="keyword" value="{{ filters.keyword }}">
           </div>
           <div class="col-12 col-md-6 col-xl-3">
-            <label class="form-label">受信日時From</label>
+            <label class="form-label">受信日時 From</label>
             <input class="form-control" type="datetime-local" name="date_from" value="{{ filters.date_from }}">
           </div>
           <div class="col-12 col-md-6 col-xl-3">
-            <label class="form-label">受信日時To</label>
+            <label class="form-label">受信日時 To</label>
             <input class="form-control" type="datetime-local" name="date_to" value="{{ filters.date_to }}">
           </div>
           <div class="col-12 d-flex gap-2">
@@ -70,7 +70,7 @@
                 {% set value = record|attr(field.field_key) %}
                 <td>
                   {% if field.field_key in ["ping_test_result", "exec_result"] %}
-                  <span class="badge rounded-pill {% if value and value|lower in ['success', 'ok', 'passed'] %}text-bg-success{% elif value %}text-bg-warning{% else %}text-bg-secondary{% endif %}">
+                  <span class="badge rounded-pill {% if value and value|lower in ['success', 'ok', 'passed'] %}text-bg-success{% elif value %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
                     {{ value or "-" }}
                   </span>
                   {% else %}
@@ -81,7 +81,7 @@
                 <td><a class="btn btn-sm btn-outline-primary" href="/records/{{ record.id }}">詳細</a></td>
               </tr>
               {% else %}
-              <tr><td colspan="99" class="text-center text-muted py-4">データがありません。</td></tr>
+              <tr><td colspan="99" class="text-center text-muted py-4">表示できるデータがありません。</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -106,6 +106,7 @@
     const storageKey = "records-auto-refresh-enabled";
     const button = document.getElementById("auto-refresh-toggle");
     const refreshSeconds = {{ auto_refresh_seconds }};
+    const refreshUrl = {{ auto_refresh_url|tojson }};
     if (!button) {
       return;
     }
@@ -128,7 +129,7 @@
 
     if (isEnabled()) {
       window.setTimeout(function () {
-        window.location.reload();
+        window.location.assign(refreshUrl);
       }, refreshSeconds * 1000);
     }
   })();

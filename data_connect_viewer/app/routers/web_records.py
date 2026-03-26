@@ -41,6 +41,13 @@ def build_query_without_paging(request: Request) -> str:
     return urlencode(params)
 
 
+def build_current_url(request: Request) -> str:
+    query = request.url.query
+    if query:
+        return f"{request.url.path}?{query}"
+    return request.url.path
+
+
 @router.get("/")
 def root():
     return RedirectResponse(url="/records")
@@ -71,6 +78,7 @@ def records_page(
             "mappings": mappings,
             "filters": display_filters,
             "query_without_paging": build_query_without_paging(request),
+            "auto_refresh_url": build_current_url(request),
             "page": page,
             "page_size": page_size,
             "total": total,
