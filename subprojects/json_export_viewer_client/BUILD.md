@@ -1,15 +1,15 @@
-# BUILD æé 
+# BUILD 手順
 
-ãã®ææ¸ã¯ `json_export_viewer_client` ã `PyInstaller` ã§ `exe` åããæé ã§ãã
+この文書は `json_export_viewer_client` を `PyInstaller` で `exe` 化する手順です。
 
-## 1. åæ
+## 1. 前提
 
 - OS: Windows
-- Python 3.9 ä»¥ä¸
-- `pip` ãå©ç¨å¯è½
-- ãã«ãå¯¾è±¡: `d:\project\subprojects\json_export_viewer_client`
+- Python 3.9 以上
+- `pip` が利用可能
+- ビルド対象: `d:\project\subprojects\json_export_viewer_client`
 
-## 2. ä¾å­å°å¥
+## 2. 依存導入
 
 ```bash
 cd D:\project\subprojects\json_export_viewer_client
@@ -17,21 +17,21 @@ python -m pip install -r requirements.txt
 python -m pip install pyinstaller
 ```
 
-## 3. ãã«ã
+## 3. ビルド
 
 ```bash
 pyinstaller --noconfirm --onefile --name json_export_viewer_client main.py
 ```
 
-## 4. çæç©
+## 4. 生成物
 
-ãã«ãå¾ãä»¥ä¸ãçæããã¾ãã
+ビルド後、以下が生成されます。
 
 ```text
 dist\json_export_viewer_client.exe
 ```
 
-å¿è¦ã«å¿ãã¦ãéå¸ç¨ãã©ã«ããä»¥ä¸ã®ããã«ã¾ã¨ãã¦ãã ããã
+必要に応じて、配布用フォルダを以下のようにまとめてください。
 
 ```text
 json_export_viewer_client/
@@ -41,26 +41,26 @@ json_export_viewer_client/
   sample_data/
 ```
 
-## 5. éå¸æã®æ³¨æ
+## 5. 配布時の注意
 
-- `config.ini` ã¯ `exe` ã¨åããã©ã«ãã«éç½®ãã¦ãã ãã
-- `json_folder` ã¯éå¸å PC ã«å­å¨ãããã¹ã¸å¤æ´ãã¦ãã ãã
-- `web` ã¢ã¼ãã§ãã­ã¼ã«ã« PC ä¸ã® `json_folder` ãèª­ã¿è¾¼ã¿ã¾ã
-- ç¾å¨ã® UI ã¯ä¸è¦§ä¸­å¿ã§ãè©³ç´°ã«ã¼ãã¯ããã¾ãã
-- ãµã³ãã«ç¢ºèªç¨ã« `sample_data/records_export.json` ãåæ¢±ã§ãã¾ã
+- `config.ini` は `exe` と同じフォルダに配置してください
+- `json_folder` は配布先 PC に存在するパスへ変更してください
+- `web` モードでもローカル PC 上の `json_folder` を読み込みます
+- 現在の UI は一覧中心で、詳細カードはありません
+- サンプル確認用に `sample_data/records_export.json` を同梱できます
 
-## 6. åãã«ã
+## 6. 再ビルド
 
-ã½ã¼ã¹æ´æ°å¾ã¯ååº¦ä»¥ä¸ãå®è¡ãã¾ãã
+ソース更新後は再度以下を実行します。
 
 ```bash
 pyinstaller --noconfirm --onefile --name json_export_viewer_client main.py
 ```
 
-## 7. è£è¶³
+## 7. 補足
 
-å¿è¦ã«å¿ãã¦ä»¥ä¸ãè¿½å ã§ãã¾ãã
+必要に応じて以下を追加できます。
 
-- `--icon` ã«ããã¢ã¤ã³ã³åãè¾¼ã¿
-- `--add-data` ã«ããè¿½å ãã¡ã¤ã«åæ¢±
-- `spec` ãã¡ã¤ã«ãç¨ããè©³ç´°å¶å¾¡
+- `--icon` によるアイコン埋め込み
+- `--add-data` による追加ファイル同梱
+- `spec` ファイルを用いた詳細制御
