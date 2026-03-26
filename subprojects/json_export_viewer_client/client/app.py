@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Iterable
 
 import flet as ft
 
@@ -32,10 +31,16 @@ METADATA_FIELDS = [
 
 SUCCESS_VALUES = {"success", "ok", "passed"}
 TABLE_LIMIT = 300
-
-
-def _record_key(record: LoadedRecord) -> str:
-    return f"{record.source_path}:{record.row_index}"
+LABEL_RECORD_COUNT = "\u30ec\u30b3\u30fc\u30c9\u6570"
+LABEL_RECORD_SUFFIX = "\u30ec\u30b3\u30fc\u30c9"
+LABEL_SEARCH_RESULTS = "\u691c\u7d22\u7d50\u679c"
+LABEL_RESULT_SUFFIX = "\u4ef6"
+LABEL_DISPLAY_SETTINGS = "\u8868\u793a\u9805\u76ee\u8a2d\u5b9a"
+LABEL_VISIBILITY = "\u8868\u793a/\u975e\u8868\u793a\u5207\u308a\u66ff\u3048"
+LABEL_SEARCH = "\u691c\u7d22"
+LABEL_RELOAD = "\u4eca\u3059\u3050\u518d\u8aad\u307f\u8fbc\u307f"
+LABEL_NO_DATA = "\u8868\u793a\u3067\u304d\u308b\u30c7\u30fc\u30bf\u304c\u3042\u308a\u307e\u305b\u3093\u3002"
+LABEL_SUMMARY = "\u30e1\u30a4\u30f3\u30a2\u30d7\u30ea\u306b\u5408\u308f\u305b\u305f\u4e00\u89a7\u753b\u9762\u3067 JSON \u3092\u691c\u7d22\u30fb\u53c2\u7167\u3057\u307e\u3059\u3002"
 
 
 def _record_value(record: LoadedRecord, field: str) -> str:
@@ -52,10 +57,9 @@ def _metadata_value(record: LoadedRecord, field: str) -> str:
 
 
 def _summary_text(config: AppConfig, result: LoadResult, filtered_count: int) -> str:
-    latest_file = result.files[0].name if result.files else "-"
     return (
         f"Mode: {config.mode} / Folder: {config.json_folder} / Refresh: {config.refresh_minutes} min / "
-        f"JSON files: {len(result.files)} / Loaded records: {len(result.records)} / Visible records: {filtered_count} / Latest file: {latest_file}"
+        f"{LABEL_RECORD_COUNT}: {len(result.records)}{LABEL_RECORD_SUFFIX} / {LABEL_SEARCH_RESULTS}: {filtered_count}{LABEL_RESULT_SUFFIX}"
     )
 
 
@@ -120,22 +124,12 @@ async def build_ui(page: ft.Page) -> None:
 
     state: dict[str, object] = {
         "result": LoadResult(files=[], records=[], loaded_at=load_json_folder(config.json_folder).loaded_at),
-        "selected_key": None,
     }
 
     summary = ft.Text(size=13, color=ft.Colors.BLUE_GREY_700)
     status = ft.Text(size=13, color=ft.Colors.BLUE_GREY_500)
-    search_input = ft.TextField(label="Search", hint_text="Search hostname, ipaddress, JSON text, or file metadata", expand=True)
+    search_input = ft.TextField(label=LABEL_SEARCH, hint_text="hostname / ipaddress / JSON text / file metadata", expand=True)
     table_container = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True)
-    detail_meta = ft.Column(spacing=8)
-    detail_json = ft.TextField(
-        label="JSON Detail",
-        multiline=True,
-        min_lines=14,
-        max_lines=26,
-        read_only=True,
-        value="Select a record to view details.",
-    )
     stats_row = ft.Row(spacing=12)
 
     metadata_toggles: dict[str, ft.Checkbox] = {
@@ -148,46 +142,6 @@ async def build_ui(page: ft.Page) -> None:
         assert isinstance(result, LoadResult)
         return [record for record in result.records if _matches_search(record, search_input.value or "")]
 
-    def find_record(records: Iterable[LoadedRecord], record_key: str | None) -> LoadedRecord | None:
-        if not record_key:
-            return None
-        for record in records:
-            if _record_key(record) == record_key:
-                return record
-        return None
-
-    def show_detail(record: LoadedRecord | None, *, should_update: bool = True) -> None:
-        detail_meta.controls.clear()
-        if record is None:
-            detail_json.value = "Select a record to view details."
-            if should_update:
-                page.update()
-            return
-
-        state["selected_key"] = _record_key(record)
-        for field, label in METADATA_FIELDS:
-            toggle = metadata_toggles[field]
-            if toggle.value:
-                detail_meta.controls.append(
-                    ft.Container(
-                        bgcolor=ft.Colors.WHITE,
-                        border_radius=10,
-                        border=ft.border.all(1, ft.Colors.BLUE_GREY_100),
-                        padding=ft.padding.symmetric(horizontal=12, vertical=10),
-                        content=ft.Column(
-                            [
-                                ft.Text(label, size=11, color=ft.Colors.BLUE_GREY_500),
-                                ft.Text(_metadata_value(record, field) or "-", size=13, color=ft.Colors.BLUE_GREY_900),
-                            ],
-                            spacing=4,
-                        ),
-                    )
-                )
-
-        detail_json.value = json.dumps(record.item, ensure_ascii=False, indent=2, default=str)
-        if should_update:
-            page.update()
-
     def update_table() -> None:
         records = filtered_records()
         result = state["result"]
@@ -195,9 +149,8 @@ async def build_ui(page: ft.Page) -> None:
 
         summary.value = _summary_text(config, result, len(records))
         stats_row.controls = [
-            _build_stat_card("JSON Files", str(len(result.files)), ft.Colors.BLUE_700),
-            _build_stat_card("Loaded Records", str(len(result.records)), ft.Colors.BLUE_900),
-            _build_stat_card("Search Results", str(len(records)), ft.Colors.TEAL_700),
+            _build_stat_card(LABEL_RECORD_COUNT, f"{len(result.records)}{LABEL_RECORD_SUFFIX}", ft.Colors.BLUE_900),
+            _build_stat_card(LABEL_SEARCH_RESULTS, f"{len(records)}{LABEL_RESULT_SUFFIX}", ft.Colors.TEAL_700),
         ]
         status.value = f"Last loaded: {result.loaded_at.strftime('%Y-%m-%d %H:%M:%S')}"
         if result.error_message:
@@ -215,19 +168,10 @@ async def build_ui(page: ft.Page) -> None:
                     cells.append(ft.DataCell(_status_chip(value)))
                 else:
                     cells.append(ft.DataCell(ft.Text(value or "-")))
-            cells.append(
-                ft.DataCell(
-                    ft.TextButton(
-                        "Detail",
-                        on_click=lambda _, current=record: show_detail(current),
-                    )
-                )
-            )
             rows.append(ft.DataRow(cells=cells))
 
         columns = [ft.DataColumn(ft.Text(label)) for _, label in visible_metadata]
         columns.extend(ft.DataColumn(ft.Text(label)) for _, label in DISPLAY_FIELDS)
-        columns.append(ft.DataColumn(ft.Text("")))
 
         if rows:
             table_container.controls = [
@@ -246,28 +190,21 @@ async def build_ui(page: ft.Page) -> None:
                     padding=20,
                     border_radius=12,
                     bgcolor=ft.Colors.WHITE,
-                    content=ft.Text("No records available.", color=ft.Colors.BLUE_GREY_500),
+                    content=ft.Text(LABEL_NO_DATA, color=ft.Colors.BLUE_GREY_500),
                 )
             ]
 
-        selected = find_record(records, state.get("selected_key"))
-        if selected is None:
-            selected = records[0] if records else None
-        show_detail(selected, should_update=False)
         page.update()
 
     def reload_data(*_args) -> None:
-        previous_selected = state.get("selected_key")
-        result = load_json_folder(config.json_folder)
-        state["result"] = result
-        state["selected_key"] = previous_selected
+        state["result"] = load_json_folder(config.json_folder)
         update_table()
 
     search_input.on_change = lambda _: update_table()
     for toggle in metadata_toggles.values():
         toggle.on_change = lambda _: update_table()
 
-    reload_button = ft.ElevatedButton("Reload Now", on_click=reload_data, bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE)
+    reload_button = ft.ElevatedButton(LABEL_RELOAD, on_click=reload_data, bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE)
 
     header = ft.Container(
         bgcolor=ft.Colors.WHITE,
@@ -277,7 +214,7 @@ async def build_ui(page: ft.Page) -> None:
         content=ft.Column(
             [
                 ft.Text(config.title, size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_900),
-                ft.Text("View JSON export files with a layout aligned to the main application.", color=ft.Colors.BLUE_GREY_600),
+                ft.Text(LABEL_SUMMARY, color=ft.Colors.BLUE_GREY_600),
                 summary,
                 status,
                 ft.Row([reload_button], alignment=ft.MainAxisAlignment.END),
@@ -293,9 +230,9 @@ async def build_ui(page: ft.Page) -> None:
         padding=20,
         content=ft.Column(
             [
-                ft.Text("Search and Display Settings", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_900),
+                ft.Text(LABEL_DISPLAY_SETTINGS, size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_900),
                 search_input,
-                ft.Text("Metadata visibility", size=13, color=ft.Colors.BLUE_GREY_600),
+                ft.Text(LABEL_VISIBILITY, size=13, color=ft.Colors.BLUE_GREY_600),
                 ft.Row(list(metadata_toggles.values()), wrap=True, spacing=12, run_spacing=8),
             ],
             spacing=14,
@@ -311,7 +248,7 @@ async def build_ui(page: ft.Page) -> None:
             [
                 ft.Row(
                     [
-                        ft.Text("Search Results", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_900),
+                        ft.Text(LABEL_SEARCH_RESULTS, size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_900),
                         ft.Container(
                             content=ft.Text("Up to 300 rows", color=ft.Colors.WHITE, size=12),
                             bgcolor=ft.Colors.BLUE_GREY_600,
@@ -328,27 +265,11 @@ async def build_ui(page: ft.Page) -> None:
         expand=True,
     )
 
-    detail_card = ft.Container(
-        bgcolor=ft.Colors.WHITE,
-        border=ft.border.all(1, ft.Colors.BLUE_GREY_100),
-        border_radius=16,
-        padding=20,
-        content=ft.Column(
-            [
-                ft.Text("Detail", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_900),
-                detail_meta,
-                detail_json,
-            ],
-            spacing=14,
-        ),
-    )
-
     page.add(
         header,
         stats_row,
         filter_card,
         records_card,
-        detail_card,
     )
 
     reload_data()
