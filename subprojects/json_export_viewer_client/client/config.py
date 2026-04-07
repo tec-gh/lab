@@ -4,6 +4,7 @@ import sys
 from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,7 @@ def get_default_config_path() -> Path:
     return get_app_root() / "config.ini"
 
 
-def load_config(config_path: Path | None = None) -> AppConfig:
+def load_config(config_path: Optional[Path] = None) -> AppConfig:
     path = (config_path or get_default_config_path()).resolve()
     parser = ConfigParser()
     parser.read(path, encoding="utf-8")

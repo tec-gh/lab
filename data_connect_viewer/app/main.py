@@ -10,7 +10,7 @@ from app.routers.api_records import router as api_records_router
 from app.routers.health import router as health_router
 from app.routers.web_records import router as web_records_router
 from app.routers.web_settings import router as web_settings_router
-from app.services.mapping_service import ensure_default_mappings
+from app.services.mapping_service import ensure_default_template
 from app.services.sftp_transfer_service import sftp_transfer_loop
 
 
@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     stop_event = asyncio.Event()
     Base.metadata.create_all(bind=engine)
     with session_scope() as session:
-        ensure_default_mappings(session)
+        ensure_default_template(session)
     transfer_task = asyncio.create_task(sftp_transfer_loop(stop_event))
     try:
         yield

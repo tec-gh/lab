@@ -1,24 +1,13 @@
-import json
-from typing import Any, Dict, Optional
+﻿import json
+from typing import Any, Dict, Optional, Union
 
 from sqlalchemy.orm import Session
 
-from app.repositories.field_mapping_repository import get_active_mappings, replace_active_mappings
-from app.schemas.field_mapping import FieldMappingUpdateItem
+from app.repositories.template_repository import DEFAULT_TEMPLATE_SPEC, get_default_template, get_template_by_name, list_templates, upsert_template
+from app.schemas.template import TemplateSpec
 
 
-DEFAULT_FIELDS = [
-    ("hostname", "Hostname"),
-    ("ipaddress", "IP Address"),
-    ("area", "Area"),
-    ("building", "Building"),
-    ("category", "Category"),
-    ("model", "Model"),
-    ("ping_test_result", "Ping Test Result"),
-    ("exec_result", "Exec Result"),
-]
-
-
+# JSON payload からテンプレート定義に従って値を抜き出す責務を持つ。
 class MappingExtractor:
     @staticmethod
     def load_payload(payload_json: str) -> dict[str, Any]:
@@ -43,6 +32,7 @@ class MappingExtractor:
             current = current[part]
         if current is None:
             return None
+        # オブジェクトや配列は JSON 文字列として保存しておく。
         if isinstance(current, (dict, list)):
             return json.dumps(current, ensure_ascii=False)
         return str(current)
@@ -54,29 +44,43 @@ class MappingExtractor:
         return {field_key for field_key, path in mappings.items() if self.has_path(payload, path)}
 
 
-def ensure_default_mappings(session: Session) -> None:
-    if get_active_mappings(session):
+# 文字列、bytes、dict のいずれで受けてもテンプレート定義へ変換する。
+def load_template_spec(data: Union[str, bytes, dict[str, Any]]) -> TemplateSpec:
+    if isinstance(data, bytes):
+        parsed = json.loads(data.decode("utf-8"))
+    elif isinstance(data, str):
+        parsed = json.loads(data)
+    else:
+        parsed = data
+    if hasattr(TemplateSpec, "model_validate"):
+        return TemplateSpec.model_validate(parsed)
+    return TemplateSpec.parse_obj(parsed)
+
+
+# Pydantic のバージョン差異を吸収しつつ dict 化する。
+def dump_template_spec(spec: TemplateSpec) -> dict[str, Any]:
+    if hasattr(spec, "model_dump"):
+        return spec.model_dump()
+    return spec.dict()
+
+
+# テンプレート未登録時に既定テンプレートを投入する。
+def ensure_default_template(session: Session) -> None:
+    if list_templates(session):
         return
-    replace_active_mappings(
-        session,
-        [
-            FieldMappingUpdateItem(
-                field_key=field_key,
-                display_name=display_name,
-                json_path=field_key,
-                is_visible=True,
-                is_searchable=True,
-                is_exportable=True,
-                sort_order=index,
-            )
-            for index, (field_key, display_name) in enumerate(DEFAULT_FIELDS, start=1)
-        ],
-        changed_by="system",
-        change_summary="Initial default mappings",
-    )
+    upsert_template(session, DEFAULT_TEMPLATE_SPEC)
 
 
-def get_active_mapping_config(session: Session) -> tuple[list, dict[str, str], int]:
-    mappings = get_active_mappings(session)
-    version = max((item.version for item in mappings), default=1)
-    return mappings, {item.field_key: item.json_path for item in mappings}, version
+# 画面選択時に対象テンプレートを解決する。
+def get_selected_template(session: Session, template_name: Optional[str]):
+    if template_name:
+        selected = get_template_by_name(session, template_name)
+        if selected:
+            return selected
+    return get_default_template(session)
+
+
+# 項目定義一覧と JSON パスマップをまとめて返す。
+def get_template_mapping_config(template) -> tuple[list, dict[str, str]]:
+    fields = sorted(template.fields, key=lambda item: (item.sort_order, item.id))
+    return fields, {item.field_key: item.json_path for item in fields}

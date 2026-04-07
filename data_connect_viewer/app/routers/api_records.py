@@ -1,211 +1,152 @@
-from datetime import datetime
-from typing import Any, Dict, Optional
+﻿from datetime import datetime
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import verify_api_key
 from app.core.config import settings
 from app.core.database import get_db
-from app.repositories.field_mapping_repository import get_active_mappings, replace_active_mappings
-from app.repositories.record_repository import resync_records
-from app.schemas.field_mapping import FieldMappingUpdateItem, FieldMappingUpdateRequest
-from app.schemas.record import RecordCreateResponse, RecordDetailResponse, RecordItemResponse, RecordListResponse
-from app.services.mapping_service import MappingExtractor
+from app.repositories.template_repository import (
+    get_default_template,
+    get_template_by_api_name,
+    get_template_by_name,
+    list_templates,
+    upsert_template,
+)
 from app.services.export_service import render_csv, render_json
+from app.services.mapping_service import dump_template_spec, get_template_mapping_config, load_template_spec
 from app.services.record_service import create_record_from_payload, export_records, get_record_detail, search_records
 
 router = APIRouter(prefix="/api/v1", tags=["api"])
 
 
-def parse_filters(
-    hostname: Optional[str] = None,
-    ipaddress: Optional[str] = None,
-    area: Optional[str] = None,
-    building: Optional[str] = None,
-    category: Optional[str] = None,
-    model: Optional[str] = None,
-    ping_test_result: Optional[str] = None,
-    exec_result: Optional[str] = None,
-    keyword: Optional[str] = None,
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
-) -> Dict[str, Any]:
-    return {
-        "hostname": hostname,
-        "ipaddress": ipaddress,
-        "area": area,
-        "building": building,
-        "category": category,
-        "model": model,
-        "ping_test_result": ping_test_result,
-        "exec_result": exec_result,
-        "keyword": keyword,
-        "date_from": date_from,
-        "date_to": date_to,
-    }
+# API 入力値からテンプレート名または API 名で対象テンプレートを解決する。
+def resolve_template(db: Session, selector: Optional[str]):
+    if selector:
+        template = get_template_by_name(db, selector)
+        if template:
+            return template
+        return get_template_by_api_name(db, selector)
+    return get_default_template(db)
 
 
-@router.post("/records", response_model=RecordCreateResponse, dependencies=[Depends(verify_api_key)])
-def create_record(payload: Dict[str, Any], response: Response, db: Session = Depends(get_db)):
-    record, created = create_record_from_payload(db, payload)
-    db.commit()
-    response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-    return RecordCreateResponse(
-        id=record.id,
-        message="created" if created else "updated",
-        mapping_version=record.mapping_version,
-    )
+# 一覧 API / 出力 API で共通利用する検索条件組み立て。
+def build_filters(request: Request, template) -> dict:
+    filters = {"keyword": request.query_params.get("keyword") or None}
+    for field in template.fields:
+        filters[field.field_key] = request.query_params.get(field.field_key) or None
+    for field in ["date_from", "date_to"]:
+        raw = request.query_params.get(field)
+        filters[field] = datetime.fromisoformat(raw) if raw else None
+    return filters
 
 
-@router.get("/records", response_model=RecordListResponse)
-def get_records(
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=settings.page_size_default, ge=1, le=200),
-    hostname: Optional[str] = None,
-    ipaddress: Optional[str] = None,
-    area: Optional[str] = None,
-    building: Optional[str] = None,
-    category: Optional[str] = None,
-    model: Optional[str] = None,
-    ping_test_result: Optional[str] = None,
-    exec_result: Optional[str] = None,
-    keyword: Optional[str] = None,
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
-    db: Session = Depends(get_db),
-):
-    filters = parse_filters(
-        hostname, ipaddress, area, building, category, model, ping_test_result, exec_result, keyword, date_from, date_to
-    )
-    records, total = search_records(db, filters, page, page_size)
-    items = [
-        RecordItemResponse(
-            id=record.id,
-            hostname=record.hostname,
-            ipaddress=record.ipaddress,
-            area=record.area,
-            building=record.building,
-            category=record.category,
-            model=record.model,
-            ping_test_result=record.ping_test_result,
-            exec_result=record.exec_result,
-            received_at=record.received_at,
-        )
-        for record in records
-    ]
-    return RecordListResponse(items=items, page=page, page_size=page_size, total=total)
-
-
-@router.get("/records/export.csv")
-def export_csv(
-    hostname: Optional[str] = None,
-    ipaddress: Optional[str] = None,
-    area: Optional[str] = None,
-    building: Optional[str] = None,
-    category: Optional[str] = None,
-    model: Optional[str] = None,
-    ping_test_result: Optional[str] = None,
-    exec_result: Optional[str] = None,
-    keyword: Optional[str] = None,
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
-    db: Session = Depends(get_db),
-):
-    filters = parse_filters(
-        hostname, ipaddress, area, building, category, model, ping_test_result, exec_result, keyword, date_from, date_to
-    )
-    content = render_csv(list(export_records(db, filters, settings.export_max_rows)))
-    headers = {
-        "Content-Disposition": "attachment; filename=records.csv",
-        "Cache-Control": "no-store",
-    }
-    return Response(content=content.encode("utf-8"), media_type="application/octet-stream", headers=headers)
-
-
-@router.get("/records/export.json")
-def export_json_file(
-    hostname: Optional[str] = None,
-    ipaddress: Optional[str] = None,
-    area: Optional[str] = None,
-    building: Optional[str] = None,
-    category: Optional[str] = None,
-    model: Optional[str] = None,
-    ping_test_result: Optional[str] = None,
-    exec_result: Optional[str] = None,
-    keyword: Optional[str] = None,
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
-    db: Session = Depends(get_db),
-):
-    filters = parse_filters(
-        hostname, ipaddress, area, building, category, model, ping_test_result, exec_result, keyword, date_from, date_to
-    )
-    content = render_json(list(export_records(db, filters, settings.export_max_rows)))
-    headers = {
-        "Content-Disposition": "attachment; filename=records.json",
-        "Cache-Control": "no-store",
-    }
-    return Response(content=content.encode("utf-8"), media_type="application/octet-stream", headers=headers)
-
-
-@router.get("/records/{record_id}", response_model=RecordDetailResponse)
-def get_record(record_id: int, db: Session = Depends(get_db)):
-    record, payload = get_record_detail(db, record_id)
-    if not record or payload is None:
-        raise HTTPException(status_code=404, detail="Record not found")
-    return RecordDetailResponse(
-        id=record.id,
-        hostname=record.hostname,
-        ipaddress=record.ipaddress,
-        area=record.area,
-        building=record.building,
-        category=record.category,
-        model=record.model,
-        ping_test_result=record.ping_test_result,
-        exec_result=record.exec_result,
-        received_at=record.received_at,
-        payload=payload,
-        mapping_version=record.mapping_version,
-    )
-
-
-@router.get("/settings/mappings")
-def get_mappings(db: Session = Depends(get_db), _: str = Depends(verify_api_key)):
-    items = get_active_mappings(db)
+# 利用可能なテンプレート一覧を返す。
+@router.get("/templates")
+def get_templates(db: Session = Depends(get_db)):
     return {
         "items": [
             {
-                "field_key": item.field_key,
-                "display_name": item.display_name,
-                "json_path": item.json_path,
-                "is_visible": item.is_visible,
-                "is_searchable": item.is_searchable,
-                "is_exportable": item.is_exportable,
-                "sort_order": item.sort_order,
-                "version": item.version,
+                "template_name": template.template_name,
+                "api_name": template.api_name,
+                "unique_key_field": template.unique_key_field,
             }
-            for item in items
+            for template in list_templates(db)
         ]
     }
 
 
-@router.put("/settings/mappings")
-def update_mappings(
-    request: FieldMappingUpdateRequest,
+# テンプレート JSON をアップロードして登録または更新する。
+@router.post("/templates/upload", dependencies=[Depends(verify_api_key)])
+async def upload_template_json(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    spec = load_template_spec(await file.read())
+    template = upsert_template(db, dump_template_spec(spec))
+    db.commit()
+    return {"message": "uploaded", "template_name": template.template_name, "api_name": template.api_name}
+
+
+# テンプレートに応じて JSON レコードを受信する。
+@router.post("/records/{template_name}", dependencies=[Depends(verify_api_key)])
+def create_record(template_name: str, payload: dict[str, Any], response: Response, db: Session = Depends(get_db)):
+    template = resolve_template(db, template_name)
+    if template is None:
+        raise HTTPException(status_code=404, detail="Template not found")
+    record, created = create_record_from_payload(db, template, payload)
+    db.commit()
+    response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return {
+        "id": record.id,
+        "message": "created" if created else "updated",
+        "template_name": template.template_name,
+        "api_name": template.api_name,
+    }
+
+
+# テンプレートに応じた一覧検索 API。
+@router.get("/records")
+def get_records(
+    request: Request,
+    template_name: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=settings.page_size_default, ge=1, le=200),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_api_key),
 ):
-    version = replace_active_mappings(db, request.mappings, changed_by="api", change_summary=request.change_summary)
-    db.commit()
-    return {"message": "updated", "version": version}
+    template = resolve_template(db, template_name)
+    if template is None:
+        return {"template_name": None, "fields": [], "items": [], "page": page, "page_size": page_size, "total": 0}
+    fields, _ = get_template_mapping_config(template)
+    records, total = search_records(db, template, build_filters(request, template), page, page_size)
+    return {
+        "template_name": template.template_name,
+        "api_name": template.api_name,
+        "fields": [{"field_key": field.field_key, "display_name": field.display_name} for field in fields],
+        "items": records,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+    }
 
 
-@router.post("/settings/mappings/resync")
-def api_resync_mappings(db: Session = Depends(get_db), _: str = Depends(verify_api_key)):
-    active = get_active_mappings(db)
-    mapping_dict = {item.field_key: item.json_path for item in active}
-    version = max((item.version for item in active), default=1)
-    count = resync_records(db, MappingExtractor(), mapping_dict, version)
-    db.commit()
-    return {"message": "resynced", "count": count, "version": version}
+# CSV 形式でダウンロードさせる。
+@router.get("/records/export.csv")
+def export_csv(
+    request: Request,
+    template_name: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    template = resolve_template(db, template_name)
+    if template is None:
+        raise HTTPException(status_code=404, detail="Template not found")
+    content = render_csv(template, list(export_records(db, template, build_filters(request, template), settings.export_max_rows)))
+    filename = f"{template.api_name}.csv"
+    headers = {"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "no-store"}
+    return Response(content=content.encode("utf-8"), media_type="application/octet-stream", headers=headers)
+
+
+# JSON 形式でダウンロードさせる。
+@router.get("/records/export.json")
+def export_json_file(
+    request: Request,
+    template_name: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    template = resolve_template(db, template_name)
+    if template is None:
+        raise HTTPException(status_code=404, detail="Template not found")
+    content = render_json(template, list(export_records(db, template, build_filters(request, template), settings.export_max_rows)))
+    filename = f"{template.api_name}.json"
+    headers = {"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "no-store"}
+    return Response(content=content.encode("utf-8"), media_type="application/octet-stream", headers=headers)
+
+
+# 単一レコード詳細 API。
+@router.get("/records/{template_name}/{record_id}")
+def get_record(template_name: str, record_id: int, db: Session = Depends(get_db)):
+    template = resolve_template(db, template_name)
+    if template is None:
+        raise HTTPException(status_code=404, detail="Template not found")
+    record, payload = get_record_detail(db, template, record_id)
+    if not record or payload is None:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return payload
